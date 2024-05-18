@@ -3,17 +3,24 @@ import { Button, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Audio } from 'expo-av';
 
+let counter = 0;
+
 export default function App()
 {
     let [song, setSong] = useState();
     let [status, setStatus] = useState('Play');
-    let [speed, setSpeed] = useState(0);
-    let [correctsPitch, setCorrectsPitch] = useState(false);
+    let [progressUpdateInterval, setProgressUpdateInterval] = useState(1000);
+
+    // console.log('Re-render');
 
     useEffect(() =>
     {
         if (!song)
+        {
             loadSong();
+            return;
+        }
+        setIntitialInterval();
         play();
 
         if (song)
@@ -30,10 +37,17 @@ export default function App()
         sound.setOnPlaybackStatusUpdate(update);
         setSong(sound);
     }
+    async function setIntitialInterval()
+    {
+        await song.setProgressUpdateIntervalAsync(1000);
+    }
     function update(playback)
     {
         if (!playback.isLoaded && playback.error)
             console.log('Error playing');
+
+        console.log(counter++);
+        // React.useState()'s doesn't work here
     }
 
     async function play()
@@ -51,29 +65,24 @@ export default function App()
         setStatus('Play');
     }
 
-    async function setRate(speedType)
+    async function updateProgressUpdateInterval(intervalType)
     {
-        let changeRate = speedType == 'faster' ? 0.25 : -0.25;
+        let changedInterval = Math.max(1000, progressUpdateInterval + (intervalType == 'more' ? 5000 : 'less' ? -5000 : 0));
 
-        await song.setRateAsync(Math.pow(2, speed + changeRate), correctsPitch);
-        setSpeed(speed + changeRate);
-    }
-    async function changePitchStatus()
-    {
-        await song.setRateAsync(Math.pow(2, speed), !correctsPitch);
-        setCorrectsPitch(!correctsPitch);
+        await song.setProgressUpdateIntervalAsync(changedInterval);
+        setProgressUpdateInterval(changedInterval);
     }
 
     return (
         <View style={styles.container}>
             <StatusBar style="auto" />
-            <Text>Click the buttons to change audio status</Text>
+            <Text>Click the buttons to change audio interval: {progressUpdateInterval}ms</Text>
             <View style={styles.row} >
-                <Button title='Slow' onPress={() => setRate('slower')} />
+                <Button title='Less' onPress={() => updateProgressUpdateInterval('less')} />
                 <Button title={status} onPress={status == 'Play' ? play : pause} />
-                <Button title='Fast' onPress={() => setRate('faster')} />
+                <Button title='More' onPress={() => updateProgressUpdateInterval('more')} />
             </View>
-            <Button title={'Corrects pitch: ' + correctsPitch} onPress={changePitchStatus} />
+            <Text>Please open the console to see the update counter</Text>
         </View>
     );
 }
